@@ -1,0 +1,29 @@
+digraph G {
+  rankdir=LR;
+  node [shape=box, style="rounded", fontname="Arial"];
+  React -> Backend [label="HTTP"];
+  Backend -> RabbitMQ [label="eventos / comandos"];
+  RabbitMQ -> Inventory [label="mensagens"];
+  Inventory -> RabbitMQ [label="eventos"];
+  Backend -> PostgresA [label="JPA"];
+  Inventory -> PostgresB [label="JPA"];
+  Backend -> Tempo [label="OTLP traces"];
+  Inventory -> Tempo [label="OTLP traces"];
+  Prometheus -> Backend [label="/actuator/prometheus"];
+  Prometheus -> Inventory [label="/actuator/prometheus"];
+  Alloy -> Loki [label="logs"];
+  Grafana -> Prometheus [label="métricas"];
+  Grafana -> Loki [label="logs"];
+  Grafana -> Tempo [label="traces"];
+  React [label="React / Nginx"];
+  Backend [label="Monólito :8080"];
+  Inventory [label="inventory-service :8081"];
+  RabbitMQ [label="RabbitMQ"];
+  PostgresA [label="PostgreSQL\nestoque"];
+  PostgresB [label="PostgreSQL\ninventory"];
+  Alloy [label="Grafana Alloy"];
+  Loki [label="Loki"];
+  Prometheus [label="Prometheus"];
+  Tempo [label="Tempo"];
+  Grafana [label="Grafana"];
+}

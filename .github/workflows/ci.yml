@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  workflow_call:
+  pull_request:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  backend-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configurar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Testar backend
+        working-directory: backend
+        run: mvn -B clean test
+
+  inventory-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configurar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Testar inventory-service
+        working-directory: inventory-service
+        run: mvn -B clean test
+
+  frontend-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configurar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - run: npm test -- --watchAll=false
+      - run: npm run build
+
+  docker-validate:
+    needs: [backend-test, inventory-test, frontend-test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validar Dockerfiles
+        run: |
+          docker build --target build -t tp5-backend-ci ./backend
+          docker build --target build -t tp5-inventory-ci ./inventory-service
+          docker build -t tp5-frontend-ci .

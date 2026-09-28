@@ -1,0 +1,213 @@
+services:
+  postgres-estoque:
+    image: postgres:17-alpine
+    container_name: tp5-postgres-estoque
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_ESTOQUE_DB:-estoque}
+      POSTGRES_USER: ${POSTGRES_ESTOQUE_USER:-estoque}
+      POSTGRES_PASSWORD: ${POSTGRES_ESTOQUE_PASSWORD:-estoque123}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_estoque_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  postgres-inventory:
+    image: postgres:17-alpine
+    container_name: tp5-postgres-inventory
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_INVENTORY_DB:-inventory}
+      POSTGRES_USER: ${POSTGRES_INVENTORY_USER:-inventory}
+      POSTGRES_PASSWORD: ${POSTGRES_INVENTORY_PASSWORD:-inventory123}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_inventory_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:4.3.6-management
+    container_name: tp5-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-guest}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  tempo:
+    image: grafana/tempo:3.0.0
+    container_name: tp5-tempo
+    command: ["-config.file=/etc/tempo/tempo.yaml"]
+    volumes:
+      - ./observability/tempo/tempo.yaml:/etc/tempo/tempo.yaml:ro
+      - tempo_data:/tmp/tempo
+    ports:
+      - "3200:3200"
+      - "4317:4317"
+      - "4318:4318"
+
+  loki:
+    image: grafana/loki:3.7.0
+    container_name: tp5-loki
+    command: ["-config.file=/etc/loki/loki-config.yaml"]
+    volumes:
+      - ./observability/loki/loki-config.yaml:/etc/loki/loki-config.yaml:ro
+      - loki_data:/loki
+    ports:
+      - "3100:3100"
+
+  prometheus:
+    image: prom/prometheus:v3.7.0
+    container_name: tp5-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    depends_on:
+      backend:
+        condition: service_started
+      inventory-service:
+        condition: service_started
+
+  backend:
+    build:
+      context: ../backend
+    image: tp5-backend:local
+    container_name: tp5-backend
+    restart: unless-stopped
+    environment:
+      SERVER_PORT: 8080
+      DB_URL: jdbc:postgresql://postgres-estoque:5432/${POSTGRES_ESTOQUE_DB:-estoque}
+      DB_DRIVER: org.postgresql.Driver
+      DB_USERNAME: ${POSTGRES_ESTOQUE_USER:-estoque}
+      DB_PASSWORD: ${POSTGRES_ESTOQUE_PASSWORD:-estoque123}
+      JPA_DDL_AUTO: update
+      JPA_DATABASE_PLATFORM: org.hibernate.dialect.PostgreSQLDialect
+      H2_CONSOLE_ENABLED: "false"
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-guest}
+      OTEL_EXPORT_ENABLED: "true"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo:4318/v1/traces
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres-estoque:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      tempo:
+        condition: service_started
+
+  inventory-service:
+    build:
+      context: ../inventory-service
+    image: tp5-inventory-service:local
+    container_name: tp5-inventory-service
+    restart: unless-stopped
+    environment:
+      SERVER_PORT: 8081
+      DB_URL: jdbc:postgresql://postgres-inventory:5432/${POSTGRES_INVENTORY_DB:-inventory}
+      DB_DRIVER: org.postgresql.Driver
+      DB_USERNAME: ${POSTGRES_INVENTORY_USER:-inventory}
+      DB_PASSWORD: ${POSTGRES_INVENTORY_PASSWORD:-inventory123}
+      JPA_DDL_AUTO: update
+      JPA_DATABASE_PLATFORM: org.hibernate.dialect.PostgreSQLDialect
+      H2_CONSOLE_ENABLED: "false"
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-guest}
+      OTEL_EXPORT_ENABLED: "true"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo:4318/v1/traces
+    ports:
+      - "8081:8081"
+    depends_on:
+      postgres-inventory:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      tempo:
+        condition: service_started
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    image: tp5-frontend:local
+    container_name: tp5-frontend
+    restart: unless-stopped
+    ports:
+      - "3001:80"
+    depends_on:
+      - backend
+
+  alloy:
+    image: grafana/alloy:v1.19.2
+    container_name: tp5-alloy
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - --disable-reporting
+      - /etc/alloy/config.alloy
+    volumes:
+      - ./observability/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - alloy_data:/var/lib/alloy/data
+    depends_on:
+      - loki
+
+  grafana:
+    image: grafana/grafana:13.0.9
+    container_name: tp5-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GF_SECURITY_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GF_SECURITY_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+      - loki
+      - tempo
+
+volumes:
+  postgres_estoque_data:
+  postgres_inventory_data:
+  rabbitmq_data:
+  tempo_data:
+  loki_data:
+  prometheus_data:
+  grafana_data:
+  alloy_data:

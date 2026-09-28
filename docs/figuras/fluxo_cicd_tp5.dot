@@ -1,0 +1,23 @@
+digraph G {
+  rankdir=LR;
+  node [shape=box, style="rounded", fontname="Arial"];
+  Dev -> GitHub [label="git push"];
+  GitHub -> CI [label="Actions"];
+  CI -> Tests [label="Maven / npm"];
+  Tests -> Images [label="build Docker"];
+  Images -> GHCR [label="push"];
+  GHCR -> Deploy [label="tag do commit"];
+  Deploy -> K8s [label="kubectl apply / set image"];
+  K8s -> HPA [label="métricas CPU"];
+  K8s -> Obs [label="logs / métricas / traces"];
+  Dev [label="Desenvolvedor"];
+  GitHub [label="GitHub"];
+  CI [label="GitHub Actions"];
+  Tests [label="Testes"];
+  Images [label="Imagens"];
+  GHCR [label="GitHub Container Registry"];
+  Deploy [label="CD"];
+  K8s [label="Kubernetes"];
+  HPA [label="Horizontal Pod Autoscaler"];
+  Obs [label="Observabilidade"];
+}

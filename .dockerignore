@@ -1,0 +1,10 @@
+.git
+.github
+node_modules
+build
+coverage
+backend/target
+inventory-service/target
+**/data
+*.log
+*.md

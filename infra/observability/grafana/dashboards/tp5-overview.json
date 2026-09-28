@@ -1,0 +1,33 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "graphTooltip": 1,
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Requisições por segundo",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "targets": [{"expr": "sum(rate(http_server_requests_seconds_count[1m])) by (application)", "legendFormat": "{{application}}"}],
+      "datasource": {"type": "prometheus", "uid": "prometheus"}
+    },
+    {
+      "type": "timeseries",
+      "title": "Memória JVM usada",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "targets": [{"expr": "sum(jvm_memory_used_bytes) by (application)", "legendFormat": "{{application}}"}],
+      "datasource": {"type": "prometheus", "uid": "prometheus"}
+    },
+    {
+      "type": "logs",
+      "title": "Logs da aplicação",
+      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 8},
+      "targets": [{"expr": "{service_name=~\"tp5-backend|tp5-inventory-service\"}"}],
+      "datasource": {"type": "loki", "uid": "loki"}
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["tp5", "spring", "observability"],
+  "time": {"from": "now-15m", "to": "now"},
+  "title": "TP5 - Observabilidade",
+  "uid": "tp5-overview"
+}

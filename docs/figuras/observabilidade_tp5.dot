@@ -1,0 +1,21 @@
+digraph G {
+  rankdir=LR;
+  node [shape=box, style="rounded", fontname="Arial"];
+  Backend -> Prometheus [label="metrics"];
+  Inventory -> Prometheus [label="metrics"];
+  Containers -> Alloy [label="stdout/logs"];
+  Alloy -> Loki [label="push"];
+  Backend -> Tempo [label="OTLP"];
+  Inventory -> Tempo [label="OTLP"];
+  Grafana -> Prometheus;
+  Grafana -> Loki;
+  Grafana -> Tempo;
+  Backend [label="backend"];
+  Inventory [label="inventory-service"];
+  Containers [label="containers / Pods"];
+  Prometheus [label="Prometheus"];
+  Alloy [label="Grafana Alloy"];
+  Loki [label="Loki"];
+  Tempo [label="Tempo"];
+  Grafana [label="Grafana"];
+}

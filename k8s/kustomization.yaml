@@ -1,0 +1,18 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: tp5
+resources:
+  - namespace.yaml
+  - secrets.yaml
+  - postgres.yaml
+  - rabbitmq.yaml
+  - backend.yaml
+  - inventory.yaml
+  - frontend.yaml
+  - hpa.yaml
+  - observability/loki.yaml
+  - observability/tempo.yaml
+  - observability/prometheus.yaml
+  - observability/grafana.yaml
+  - observability/alloy-rbac.yaml
+  - observability/alloy.yaml
