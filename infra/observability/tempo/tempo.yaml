@@ -1,34 +1,24 @@
+stream_over_http_enabled: true
+
 server:
   http_listen_port: 3200
-
-stream_over_http_enabled: true
 
 distributor:
   receivers:
     otlp:
       protocols:
         grpc:
-          endpoint: 0.0.0.0:4317
+          endpoint: "0.0.0.0:4317"
         http:
-          endpoint: 0.0.0.0:4318
-
-ingester:
-  max_block_duration: 5m
-
-compactor:
-  compaction:
-    block_retention: 1h
+          endpoint: "0.0.0.0:4318"
 
 storage:
   trace:
     backend: local
-    local:
-      path: /tmp/tempo/traces
     wal:
-      path: /tmp/tempo/wal
+      path: /var/tempo/wal
+    local:
+      path: /var/tempo/blocks
 
-metrics_generator:
-  registry:
-    external_labels:
-      source: tempo
-      cluster: tp5
+usage_report:
+  reporting_enabled: false
