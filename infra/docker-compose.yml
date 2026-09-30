@@ -59,7 +59,7 @@ services:
     command: ["-config.file=/etc/tempo/tempo.yaml"]
     volumes:
       - ./observability/tempo/tempo.yaml:/etc/tempo/tempo.yaml:ro
-      - tempo_data:/var/tempo
+      - tempo_data:/tmp/tempo
     ports:
       - "3200:3200"
       - "4317:4317"
@@ -165,7 +165,8 @@ services:
     ports:
       - "3001:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_started
 
   alloy:
     image: grafana/alloy:v1.19.2

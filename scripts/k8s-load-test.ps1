@@ -1,4 +1,6 @@
 $ErrorActionPreference = "Stop"
+$ProjectRoot = Split-Path -Parent $PSScriptRoot
+Set-Location $ProjectRoot
 
 Write-Host "Iniciando carga simples no backend. Pressione Ctrl+C para encerrar." -ForegroundColor Yellow
 
